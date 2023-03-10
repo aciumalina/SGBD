@@ -1,0 +1,946 @@
+--EXERCITIUL 1
+--a
+declare
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t.nr, e.first_name, e.salary, j.job_title from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, job_curent;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent);
+            job := job_curent;
+            afisat := 1;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else dbms_output.put_line('Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end if;
+        end loop;
+        
+    close c;
+end;
+
+--b ciclu cursor
+declare
+    afisat number(1) := 0;
+    job jobs.job_title%type;
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    for i in c loop
+        if afisat = 0 or i.titlu != job then
+            dbms_output.put_line(i.titlu);
+            job := i.titlu;
+            afisat := 1;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else dbms_output.put_line('Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+end;
+
+--c ciclu cursor cu subcereri
+declare
+    afisat number(1) := 0;
+    job jobs.job_title%type;
+        
+begin
+    for i in (with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id) loop
+        if afisat = 0 or i.titlu != job then
+            dbms_output.put_line(i.titlu);
+            job := i.titlu;
+            afisat := 1;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else dbms_output.put_line('Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+end;
+
+--d expresii cursor
+declare
+type refcursor is ref cursor;
+cursor c is
+        select count(e.employee_id), j.job_title titlu , cursor (select first_name, salary from employees e where e.job_id = j.job_id) from jobs j, employees e
+        where j.job_id = e.job_id
+        group by j.job_id, j.job_title;
+        
+v_cursor refcursor;
+nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+
+begin
+    open c;
+    loop
+        fetch c into numar_ang, job_curent, v_cursor;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent);
+            job := job_curent;
+            afisat := 1;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else loop   
+            fetch v_cursor into nume, salariu;
+            exit when v_cursor%notfound;
+            dbms_output.put_line('Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end loop;
+        end if;
+        end loop;
+        close c;
+end;
+
+
+--EXERCITIUL 2
+--a
+declare
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    medie_venituri_lunare number(10);
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    medie_venituri_totale number(10);
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr, e.first_name, e.salary, j.job_title from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, job_curent;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            nr_total_ang := nr_total_ang + numar_ang;
+            venituri_totale := venituri_totale + venituri_lunare;
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            medie_venituri_lunare := venituri_lunare / numar_ang_anterior;
+            dbms_output.put_line('Medie Venituri lunare job anterior: ' || medie_venituri_lunare);
+            dbms_output.put_line(job_curent || ' NR DE ANGAJATI ' || numar_ang);
+            venituri_lunare := 0;
+            job := job_curent;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + salariu;
+            numar_ang_anterior := numar_ang;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end if;
+        end loop;
+        
+    close c;
+    
+    medie_venituri_totale := venituri_totale / nr_total_ang;
+    dbms_output.put_line('Nr total angajati: ' || nr_total_ang);
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    dbms_output.put_line('Medie Venituri totale: ' || medie_venituri_totale);
+    
+end;
+
+--b
+declare
+    job jobs.job_title%type;
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    medie_venituri_lunare number(10);
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    medie_venituri_totale number(10);
+    afisat number(1) := 0;
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    for i in c loop
+        if afisat = 0 or i.titlu != job then
+            nr_total_ang := nr_total_ang + i.nr;
+            venituri_totale := venituri_totale + venituri_lunare;
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            medie_venituri_lunare := venituri_lunare / numar_ang_anterior;
+            dbms_output.put_line('Medie Venituri lunare job anterior: ' || medie_venituri_lunare);
+            dbms_output.put_line(i.titlu || ' NR DE ANGAJATI ' || i.nr);
+            venituri_lunare := 0;
+            job := i.titlu;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + i.salariu;
+            numar_ang_anterior := i.nr;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+    medie_venituri_totale := venituri_totale / nr_total_ang;
+    dbms_output.put_line('Nr total angajati: ' || nr_total_ang);
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    dbms_output.put_line('Medie Venituri totale: ' || medie_venituri_totale);
+end;
+
+--c
+declare
+    job jobs.job_title%type;
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    medie_venituri_lunare number(10);
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    medie_venituri_totale number(10);
+    afisat number(1) := 0;
+        
+begin
+    for i in (with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id) loop
+        if afisat = 0 or i.titlu != job then
+            nr_total_ang := nr_total_ang + i.nr;
+            venituri_totale := venituri_totale + venituri_lunare;
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            medie_venituri_lunare := venituri_lunare / numar_ang_anterior;
+            dbms_output.put_line('Medie Venituri lunare job anterior: ' || medie_venituri_lunare);
+            dbms_output.put_line(i.titlu || ' NR DE ANGAJATI ' || i.nr);
+            venituri_lunare := 0;
+            job := i.titlu;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + i.salariu;
+            numar_ang_anterior := i.nr;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+    medie_venituri_totale := venituri_totale / nr_total_ang;
+    dbms_output.put_line('Nr total angajati: ' || nr_total_ang);
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    dbms_output.put_line('Medie Venituri totale: ' || medie_venituri_totale);
+end;
+
+--d
+declare
+type refcursor is ref cursor;
+cursor c is
+        select count(e.employee_id), j.job_title titlu , cursor (select first_name, salary from employees e where e.job_id = j.job_id) from jobs j, employees e
+        where j.job_id = e.job_id
+        group by j.job_id, j.job_title;
+        
+v_cursor refcursor;
+nume employees.first_name%type;
+    salariu employees.salary%type;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    medie_venituri_lunare number(10);
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    medie_venituri_totale number(10);
+    afisat number(1) := 0;
+    numar_ang_anterior number(3);
+
+begin
+    open c;
+    loop
+        fetch c into numar_ang, job_curent, v_cursor;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            nr_total_ang := nr_total_ang + numar_ang;
+            venituri_totale := venituri_totale + venituri_lunare;
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            medie_venituri_lunare := venituri_lunare / numar_ang_anterior;
+            dbms_output.put_line('Medie Venituri lunare job anterior: ' || medie_venituri_lunare);
+            dbms_output.put_line(job_curent || ' NR DE ANGAJATI ' || numar_ang);
+            venituri_lunare := 0;
+            job := job_curent;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else loop   
+            fetch v_cursor into nume, salariu;
+            exit when v_cursor%notfound;
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + salariu;
+            numar_ang_anterior := numar_ang;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end loop;
+        end if;
+        end loop;
+        close c;
+        
+        medie_venituri_totale := venituri_totale / nr_total_ang;
+    dbms_output.put_line('Nr total angajati: ' || nr_total_ang);
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    dbms_output.put_line('Medie Venituri totale: ' || medie_venituri_totale);
+end;
+
+--EXERCITIUL 3
+--a
+declare
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    medie_venituri_lunare number(10);
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    medie_venituri_totale number(10);
+    comision employees.commission_pct%type;
+    procent number(4,3);
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr, e.first_name, e.salary, nvl(e.commission_pct, 0), j.job_title from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, comision, job_curent;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            nr_total_ang := nr_total_ang + numar_ang;
+            venituri_totale := venituri_totale + venituri_lunare;
+            if comision != 0 then venituri_totale := venituri_totale + comision * salariu;
+            end if;
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            medie_venituri_lunare := venituri_lunare / numar_ang_anterior;
+            dbms_output.put_line('Medie Venituri lunare job anterior: ' || medie_venituri_lunare);
+            dbms_output.put_line(job_curent || ' NR DE ANGAJATI ' || numar_ang);
+            venituri_lunare := 0;
+            job := job_curent;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + salariu;
+            numar_ang_anterior := numar_ang;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end if;
+        end loop;
+        
+    close c;
+    
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    
+    --calculare procent din venitul total pt fiecare angajat
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, comision, job_curent;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            job := job_curent;
+            afisat := 1;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            procent := (salariu * 100) / venituri_totale;
+            dbms_output.put_line(' Angajatul: ' || nume || ' cu salariul ' || salariu || ' si castiga un procent de ' ||procent);
+        end if;
+        end loop;
+        
+    close c;
+    
+end;
+
+--b
+declare
+    job jobs.job_title%type;
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    afisat number(1) := 0;
+    comision employees.commission_pct%type;
+    procent number(4,3);
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, nvl(e.commission_pct, 0) comision, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    for i in c loop
+        if afisat = 0 or i.titlu != job then
+            nr_total_ang := nr_total_ang + i.nr;
+            venituri_totale := venituri_totale + venituri_lunare;
+            if i.comision != 0 then venituri_totale := venituri_totale + i.comision * i.salariu;
+            end if;
+            
+            dbms_output.put_line(i.titlu || ' NR DE ANGAJATI ' || i.nr);
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            venituri_lunare := 0;
+            job := i.titlu;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + i.salariu;
+            numar_ang_anterior := i.nr;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    
+    for i in c loop
+        procent := (i.salariu * 100) / venituri_totale;
+        dbms_output.put_line(' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu || ' si castiga un procent de ' ||procent);
+    end loop;
+end;
+
+--c ciclu cursor
+declare
+    job jobs.job_title%type;
+    numar_ang_anterior number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    afisat number(1) := 0;
+    comision employees.commission_pct%type;
+    procent number(4,3);
+
+begin
+    for i in (with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, nvl(e.commission_pct, 0) comision, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id) loop
+        if afisat = 0 or i.titlu != job then
+            nr_total_ang := nr_total_ang + i.nr;
+            venituri_totale := venituri_totale + venituri_lunare;
+            if i.comision != 0 then venituri_totale := venituri_totale + i.comision * i.salariu;
+            end if;
+            
+            dbms_output.put_line('Venituri lunare job anterior: ' || venituri_lunare);
+            dbms_output.put_line(i.titlu || ' NR DE ANGAJATI ' || i.nr);
+            venituri_lunare := 0;
+            job := i.titlu;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else 
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + i.salariu;
+            numar_ang_anterior := i.nr;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu);
+        end if;
+        end loop;
+
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+    
+    for i in (with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, nvl(e.commission_pct, 0) comision, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id) loop
+        procent := (i.salariu * 100) / venituri_totale;
+        dbms_output.put_line(' Angajatul: ' || i.nume || ' cu salariul ' || i.salariu || ' si castiga un procent de ' ||procent);
+    end loop;
+end;
+
+--d expresii cursor
+declare
+type refcursor is ref cursor;
+cursor c is
+        select count(e.employee_id), j.job_title titlu , cursor (select first_name, salary, commission_pct from employees e where e.job_id = j.job_id) from jobs j, employees e
+        where j.job_id = e.job_id
+        group by j.job_id, j.job_title;
+        
+    v_cursor refcursor;
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    nr_ordin number(3) := 0;
+    venituri_lunare number(10) := 0;
+    nr_total_ang number(4) := 0;
+    venituri_totale number(10) := 0;
+    afisat number(1) := 0;
+    numar_ang_anterior number(3);
+    comision number(4,3);
+    procent number(4,3);
+
+begin
+    open c;
+    loop
+        fetch c into numar_ang, job_curent, v_cursor;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            nr_total_ang := nr_total_ang + numar_ang;
+            venituri_totale := venituri_totale + venituri_lunare;
+            dbms_output.put_line(job_curent || ' NR DE ANGAJATI ' || numar_ang);
+            venituri_lunare := 0;
+            job := job_curent;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else loop   
+            fetch v_cursor into nume, salariu, comision;
+            exit when v_cursor%notfound;
+            nr_ordin := nr_ordin + 1;
+            venituri_lunare := venituri_lunare + salariu;
+            if nvl(comision, 0) != 0 then venituri_totale := venituri_totale + comision * salariu;
+            end if;
+            numar_ang_anterior := numar_ang;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || nume || ' cu salariul ' || salariu);
+        end loop;
+        end if;
+        end loop;
+        close c;
+        
+    dbms_output.put_line('Venituri totale: ' || venituri_totale);
+        
+    open c;
+    loop
+        fetch c into numar_ang, job_curent, v_cursor;
+        exit when c%notfound;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent || ' NR DE ANGAJATI ' || numar_ang);
+            job := job_curent;
+            afisat := 1;
+            nr_ordin := 0;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        else loop   
+            fetch v_cursor into nume, salariu, comision;
+            exit when v_cursor%notfound;
+            nr_ordin := nr_ordin + 1;
+            procent := (salariu * 100) / venituri_totale;
+            dbms_output.put_line(nr_ordin || ' Angajatul: ' || nume || ' cu salariul ' || salariu || 'are procentul de ' || procent);
+        end loop;
+        end if;
+        end loop;
+        close c;
+end;
+
+--EXERCITIUL 4
+--a
+declare
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    contor number(2) := 0;
+    
+    type t is table of employees.salary%type index by pls_integer;
+    salarii t;
+    
+    type tablou is table of employees.first_name%type index by pls_integer;
+    nume_ang tablou;
+    
+    i number(3) := 1;
+    temp employees.salary%type;
+    temp2 employees.first_name%type;
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t.nr, e.first_name, e.salary, j.job_title from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, job_curent;
+        exit when c%notfound;
+        salarii(i) := salariu;
+        nume_ang(i) := nume;
+        i := i + 1;
+        contor := contor + 1;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent);
+            job := job_curent;
+            afisat := 1;
+            i := 1;
+            contor := 1;
+--            nume_ang.delete;
+--            salarii.delete;
+        if contor >= numar_ang then
+            for j in 1..salarii.last loop
+                for k in j+1..salarii.last loop
+                    if salarii(k) >= salarii(j) then
+                        temp := salarii(j);
+                        salarii(j) := salarii(k);
+                        salarii(k) := temp;
+                        
+                        temp2 := nume_ang(j);
+                        nume_ang(j) := nume_ang(k);
+                        nume_ang(k) := temp2;
+                        
+                    end if;
+                end loop;
+                end loop;
+                
+                for x in 1..5 loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        elsif numar_ang < 5 then dbms_output.put_line('Exista mai putin de 5 angajati pe acest job');
+            for x in 1..numar_ang loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end loop;
+    close c;
+end;
+
+--b
+declare
+    afisat number(1) := 0;
+    job jobs.job_title%type;
+    
+    contor number(2) := 0;
+    
+    type t is table of employees.salary%type index by pls_integer;
+    salarii t;
+    
+    type tablou is table of employees.first_name%type index by pls_integer;
+    nume_ang tablou;
+    
+    y number(3) := 1;
+    temp employees.salary%type;
+    temp2 employees.first_name%type;
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    for i in c loop
+        salarii(y) := i.salariu;
+        nume_ang(y) := i.nume;
+        y := y + 1;
+        contor := contor + 1;
+        if afisat = 0 or i.titlu != job then
+            dbms_output.put_line(i.titlu);
+            job := i.titlu;
+            afisat := 1;
+            contor := 1;
+        if contor >= i.nr then
+            for j in 1..salarii.last loop
+                for k in j+1..salarii.last loop
+                    if salarii(k) >= salarii(j) then
+                        temp := salarii(j);
+                        salarii(j) := salarii(k);
+                        salarii(k) := temp;
+                        
+                        temp2 := nume_ang(j);
+                        nume_ang(j) := nume_ang(k);
+                        nume_ang(k) := temp2;
+                        
+                    end if;
+                end loop;
+                end loop;
+                
+                for x in 1..5 loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        elsif i.nr < 5 then dbms_output.put_line('Jobul are mai putin de 5 angajati');
+            for x in 1..i.nr loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end loop;
+end;
+
+--c ciclu cursor cu subcereri
+declare
+    afisat number(1) := 0;
+    job jobs.job_title%type;
+    
+    contor number(2) := 0;
+    
+    type t is table of employees.salary%type index by pls_integer;
+    salarii t;
+    
+    type tablou is table of employees.first_name%type index by pls_integer;
+    nume_ang tablou;
+    
+    y number(3) := 1;
+    temp employees.salary%type;
+    temp2 employees.first_name%type;
+
+       
+begin
+    for i in ( with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t. nr nr, e.first_name nume, e.salary salariu, j.job_title titlu from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id) loop
+        salarii(y) := i.salariu;
+        nume_ang(y) := i.nume;
+        y := y + 1;
+        contor := contor + 1;
+        if afisat = 0 or i.titlu != job then
+            dbms_output.put_line(i.titlu);
+            job := i.titlu;
+            afisat := 1;
+            contor := 1;
+        if contor >= i.nr then
+            for j in 1..salarii.last loop
+                for k in j+1..salarii.last loop
+                    if salarii(k) >= salarii(j) then
+                        temp := salarii(j);
+                        salarii(j) := salarii(k);
+                        salarii(k) := temp;
+                        
+                        temp2 := nume_ang(j);
+                        nume_ang(j) := nume_ang(k);
+                        nume_ang(k) := temp2;
+                        
+                    end if;
+                end loop;
+                end loop;
+                
+                for x in 1..5 loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end if;
+        
+        if i.nr = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        elsif i.nr < 5 then dbms_output.put_line('Jobul are mai putin de 5 angajati');
+        for x in 1..i.nr loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end loop;
+end;
+
+--d expresii cursor
+declare
+type refcursor is ref cursor;
+cursor c is
+        select count(e.employee_id), j.job_title titlu , cursor (select first_name, salary from employees e where e.job_id = j.job_id) from jobs j, employees e
+        where j.job_id = e.job_id
+        group by j.job_id, j.job_title;
+        
+v_cursor refcursor;
+nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    
+    contor number(2) := 0;
+    
+    type t is table of employees.salary%type index by pls_integer;
+    salarii t;
+    
+    type tablou is table of employees.first_name%type index by pls_integer;
+    nume_ang tablou;
+    
+    i number(3) := 1;
+    temp employees.salary%type;
+    temp2 employees.first_name%type;
+
+begin
+    open c;
+    loop
+        fetch c into numar_ang, job_curent, v_cursor;
+        exit when c%notfound;
+        loop fetch v_cursor into nume, salariu;
+            exit when v_cursor%notfound;
+        salarii(i) := salariu;
+        nume_ang(i) := nume;
+        i := i + 1;
+        contor := contor + 1;
+        end loop;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent);
+            job := job_curent;
+            afisat := 1;
+            i := 1;
+            contor := 1;
+--            nume_ang.delete;
+--            salarii.delete;
+        if contor >= numar_ang then
+            for j in 1..salarii.last loop
+                for k in j+1..salarii.last loop
+                    if salarii(k) >= salarii(j) then
+                        temp := salarii(j);
+                        salarii(j) := salarii(k);
+                        salarii(k) := temp;
+                        
+                        temp2 := nume_ang(j);
+                        nume_ang(j) := nume_ang(k);
+                        nume_ang(k) := temp2;
+                        
+                    end if;
+                end loop;
+                end loop;
+                
+                for x in 1..5 loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        elsif numar_ang < 5 then dbms_output.put_line('Jobul are mai putin de 5 angajati');
+        for x in 1..numar_ang loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+            end loop;
+        end if;
+        end loop;
+        close c;
+end;
+
+--EXERCITIUL 5
+--Modifica?i  exerci?iul anterior astfel încât să ob?ine?ipentru  fiecare  jobtop  5  angaja?i.  
+--Dacă există mai mul?i angaja?i care respectă criteriul de selec?ie care au acela?i salariu,
+--atunci ace?tia vor ocupa aceea?i pozi?ie în top 5
+
+--exercitiu rezolvat cu cursor clasic
+declare
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    afisat number(1) := 0;
+    job_curent jobs.job_title%type;
+    job jobs.job_title%type;
+    numar_ang number(3);
+    contor number(2) := 0;
+    salariu_duplicat number(2) := 0;
+    
+    type t is table of employees.salary%type index by pls_integer;
+    salarii t;
+    
+    type tablou is table of employees.first_name%type index by pls_integer;
+    nume_ang tablou;
+    
+    i number(3) := 1;
+    temp employees.salary%type;
+    temp2 employees.first_name%type;
+    
+    cursor c is 
+        with tabel as (select j.job_id, count(e.employee_id) nr from jobs j, employees e where j.job_id = e.job_id group by j.job_id)
+        select t.nr, e.first_name, e.salary, j.job_title from employees e, jobs j, tabel t
+        where e.job_id = j.job_id and j.job_id = t.job_id;
+begin
+    open c;
+    loop
+        fetch c into numar_ang, nume, salariu, job_curent;
+        exit when c%notfound;
+        salarii(i) := salariu;
+        nume_ang(i) := nume;
+        i := i + 1;
+        contor := contor + 1;
+        if afisat = 0 or job_curent != job then
+            dbms_output.put_line(job_curent);
+            job := job_curent;
+            afisat := 1;
+            i := 1;
+            contor := 1;
+            salariu_duplicat := 0;
+--            nume_ang.delete;
+--            salarii.delete;
+        if contor >= numar_ang then
+            for j in 1..salarii.last loop
+                for k in j+1..salarii.last loop
+                    if salarii(k) = salarii(j) and salariu_duplicat < 5 then salariu_duplicat := salariu_duplicat + 1;
+                    end if;
+                    if salarii(k) >= salarii(j) then
+                        temp := salarii(j);
+                        salarii(j) := salarii(k);
+                        salarii(k) := temp;
+                        
+                        temp2 := nume_ang(j);
+                        nume_ang(j) := nume_ang(k);
+                        nume_ang(k) := temp2;
+                        
+                    end if;
+                end loop;
+                end loop;
+                
+                if 5 + salariu_duplicat < numar_ang then
+                for x in 1..5 + salariu_duplicat loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+                --dbms_output.put_line('DUPLICAT ' || salariu_duplicat);
+                end loop;
+                else for x in 1..5 loop
+                dbms_output.put_line('Angajatul ' || nume_ang(x) || ' cu salariul ' || salarii(x));
+                end loop;
+                end if;
+
+        end if;
+
+        end if;
+        
+        if numar_ang = 0 then dbms_output.put_line('Nu exista angajati pe acest job');
+        elsif numar_ang < 5 then dbms_output.put_line('Exista mai putin de 5 angajati pe acest job');
+        end if;
+        end loop;
+    close c;
+end;
+
+
+
+
+

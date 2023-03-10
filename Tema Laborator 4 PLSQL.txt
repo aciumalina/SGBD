@@ -1,0 +1,352 @@
+--TEMA LABORATOR 4 CU PROCEDURI
+--EX 1
+
+
+create table info_mac (utilizator varchar2(100),
+                        data date,
+                        comanda varchar2(100),
+                        nr_linii number(3),
+                        eroare varchar2(200))
+
+
+--EX 2
+--FUNCTIA DE LA EXERCITIUL 2
+CREATE OR REPLACE FUNCTION f2_mac (v_nume employees.last_name%TYPE DEFAULT 'Bell')
+RETURN NUMBER IS
+    salariu employees.salary%type := null;
+    user_curent varchar2(100);
+    linii number(3);
+    BEGIN
+    select user into user_curent from dual;
+    SELECT salary INTO salariu FROM employees
+    WHERE  last_name = v_nume;
+    
+    if sql%rowcount = 1 then 
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', 1, 'Exista un singur angajat cu numele dat');
+        RETURN salariu;
+    end if;    
+    EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', 0, 'Nu exista angajati cu numele dat');
+        return salariu;
+        --RAISE_APPLICATION_ERROR(-20000,'Nu exista angajati cu numele dat');
+    WHEN TOO_MANY_ROWS THEN
+        linii := sql%rowcount;
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', linii, 'Exista mai multi angajati cu numele dat');
+        return salariu;
+    WHEN OTHERS THEN
+        linii := sql%rowcount;
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', linii, 'Alta eroare');
+        return salariu;
+        --RAISE_APPLICATION_ERROR(-20002,'Alta eroare!');
+    
+END f2_mac;
+
+--apelare functie
+BEGIN
+
+    DBMS_OUTPUT.PUT_LINE(f2_mac('adf'));
+END;
+
+select * from info_mac;
+
+
+--PROCEDURA DE LA EXERCITIUUL 4
+CREATE OR REPLACE PROCEDURE p4_mac(v_nume employees.last_name%TYPE)
+IS
+    salariu employees.salary%TYPE;
+    user_curent varchar2(100);
+    linii number(3);
+    BEGIN
+    select user into user_curent from dual;
+    SELECT salary INTO salariu FROM   employees
+    WHERE  last_name = v_nume;
+    DBMS_OUTPUT.PUT_LINE('Salariul este '|| salariu);
+    
+    if sql%rowcount = 1 then 
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', 1, 'Exista un singur angajat cu numele dat');
+    end if;
+    
+    EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', 0, 'Nu exista angajati cu numele dat');
+        --RAISE_APPLICATION_ERROR(-20000,'Nu exista angajati cu numele dat');
+    WHEN TOO_MANY_ROWS THEN
+        linii := sql%rowcount;
+        insert into info_mac values(user_curent, sysdate, 'f2_mac', linii, 'Exista mai multi angajati cu numele dat');
+        --RAISE_APPLICATION_ERROR(-20001,'Exista mai multi angajati cu numele dat');
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20002,'Alta eroare!');
+END p4_mac;
+
+begin
+    p4_mac('Bell');
+end;
+
+select * from job_history;
+
+--EXERCITIUL 3
+--Defini?i  o  func?ie stocată care determină numărul de angaja?i care  au  avut  cel  pu?in  2  joburi diferite 
+--?i care în prezent lucrează într-un ora?dat ca parametru. Trata?i cazul în care ora?ul dat caparametru nu există,
+--respectiv cazul în care în ora?ul dat nu lucrează niciun angajat. Insera?i în tabelul info_***informa?iile
+--corespunzătoare fiecărui caz determinat de valoarea dată pentru parametru. 
+select * from employees;
+select * from locations;
+
+create or replace function ex3_mac (oras locations.city%type default null)
+return number
+is
+    user_curent varchar2(100);
+    oras_curent locations.location_id%type := null;
+    numar_ang number(2);
+begin
+    select user into user_curent from dual;
+    select location_id into oras_curent from locations
+    where city = oras;
+        
+    select count(*) into numar_ang
+    from employees e join departments d on (e.department_id = d.department_id) join locations l on (l.location_id = d.location_id)
+    where (select count(*) from job_history j where e.employee_id = j.employee_id) > 1 and l.location_id = oras_curent;
+    
+    if numar_ang = 0 then
+        insert into info_mac values(user_curent, sysdate, 'ex3_mac', 0, 'Nu lucreaza niciun angajat cu cerintele specificate');
+    else 
+        insert into  info_mac values(user_curent, sysdate, 'ex3_mac', numar_ang, 'S-au gasit angajati');
+    end if;
+    
+    return numar_ang;
+    exception
+            WHEN NO_DATA_FOUND THEN
+            insert into info_mac values(user_curent, sysdate, 'ex3_mac', 0, 'Orasul nu exista in baza de date');
+            return 0;
+end ex3_mac;
+
+begin
+dbms_output.put_line(ex3_mac('wrfr'));
+end;
+
+select * from info_mac;
+
+--EXERCITIUL 4
+--Defini?i o procedură stocată care măre?te cu 10% salariile tuturor angaja?ilor condu?i direct sau indirect de
+--către un manager al cărui cod este dat ca parametru. Trata?i cazul în care nu există niciun manager cu
+--codul dat. Insera?i în tabelul info_***informa?iile corespunzătoare fiecărui caz determinat de valoarea dată pentru parametru.
+
+create or replace procedure ex4_mac(cod_manager employees.manager_id%type)
+is
+    --cod_manager employees.manager_id%type;
+    user_curent varchar2(100);
+    linii number(2);
+begin
+    select user into user_curent from dual;
+    
+    update employees
+    set salary = salary + salary * 0.1
+    where manager_id = cod_manager;
+    
+    linii := sql%rowcount;
+    if linii = 0 then insert into info_mac values(user_curent, sysdate, 'ex4_mac', 0, 'Nu exista manageri cu codul dat');
+    else insert into info_mac values(user_curent, sysdate, 'ex4_mac', linii, 'Au fost updatate salarii');
+    end if;
+
+end;
+
+begin
+ex4_mac(333);
+end;
+
+select * from info_mac;
+
+--EXERCITIUL 5
+--VARIANTA 1 CARE NU TINE CONT DE JOB HISTORY
+create or replace procedure ex5_mac_1
+is
+    user_curent varchar2(100);
+    linii         number;
+    zi            number;
+    vechime number;
+begin
+    select user into user_curent from dual;
+    
+    for dep in (select *
+                from departments) loop
+        dbms_output.put_line('DEPARTAMENT ' || dep.department_name || ':');
+        
+        select count(*)
+            into linii
+            from employees
+            where department_id = dep.department_id;
+        
+        if linii = 0 then
+            dbms_output.put_line('Nu exista angajati!');
+        else
+            select zi
+            into zi
+            from (select extract (day from hire_date) zi, count(*)
+                  from employees e
+                  where e.department_id = dep.department_id
+                  group by extract(day from hire_date)
+                  order by count(*) desc)
+            where rownum = 1;
+        
+        dbms_output.put_line('Ziua cu cele mai multe angajari: ' || zi);
+        
+        for e in (select * 
+                  from employees
+                  where department_id = dep.department_id and extract(day from hire_date) = zi) loop
+            vechime := round((sysdate-e.hire_date)/365, 1);
+            dbms_output.put_line('    Nume: ' || e.first_name || ', Salariu: ' || e.salary || ', Vechime(ani): ' || vechime);
+        end loop;
+        end if;
+    end loop;
+end;
+
+--VARIANTA 2 CARE TINE CONT DE  JOB HISTORY
+create or replace procedure ex5_mac_2
+is
+    user_curent varchar2(100);
+    linii         number;
+    zi            number;
+    vechime number;
+    prima_data_ang date;
+begin
+    select user into user_curent from dual;
+    
+    for dep in (select *
+                from departments) loop
+        dbms_output.put_line('DEPARTAMENT ' || dep.department_name || ':');
+        
+        select count(*)
+            into linii
+            from employees
+            where department_id = dep.department_id;
+        
+        if linii = 0 then
+            dbms_output.put_line('Nu exista angajati!');
+        else
+            select zi
+            into zi
+            from (select extract (day from hire_date) zi, count(*)
+                  from employees e
+                  where e.department_id = dep.department_id
+                  group by extract(day from hire_date)
+                  order by count(*) desc)
+            where rownum = 1;
+        
+        dbms_output.put_line('Ziua cu cele mai multe angajari: ' || zi);
+        
+        for e in (select * 
+                  from employees
+                  where department_id = dep.department_id and extract(day from hire_date) = zi) loop
+            select nvl(min(start_date), e.hire_date) into prima_data_ang from job_history where employee_id = e.employee_id;
+            vechime := round((sysdate-prima_data_ang)/365, 1);
+            dbms_output.put_line('    Nume: ' || e.first_name || ', Salariu: ' || e.salary || ', Vechime(ani): ' || vechime);
+        end loop;
+        end if;
+    end loop;
+end;
+
+execute ex5_mac_1;
+execute ex5_mac_2;
+
+
+--EXERCITIUL 6
+create or replace procedure ex6_mac
+is
+    user_curent varchar2(100);
+    linii         number;
+    zi            number;
+    vechime number;
+    
+    type t is table of employees.employee_id%type index by pls_integer;
+    coduri t;
+    
+    type tablou is table of number index by pls_integer;
+    vechimi tablou;
+    
+    i number(2) := 0;
+    iteratii number(2) := 0;
+    j number(2) := 0;
+    
+    temp number;
+    tempcod employees.employee_id%type;
+    
+    nume employees.first_name%type;
+    salariu employees.salary%type;
+    de_afisat number := 1;
+begin
+    select user into user_curent from dual;
+    
+    for dep in (select *
+                from departments) loop
+        if iteratii = 0 then
+        dbms_output.put_line('DEPARTAMENT ' || dep.department_name || ':');
+        end if;
+        
+        if iteratii != 0 and de_afisat = 1 then
+            for j in vechimi.first..vechimi.last loop
+                for k in j+1..vechimi.last loop
+                    if vechimi(k) > vechimi(j) then
+                        temp := vechimi(j);
+                        vechimi(j) := vechimi(k);
+                        vechimi(k) := temp;
+                        
+                        tempcod := coduri(j);
+                        coduri(j) := coduri(k);
+                        coduri(k) := tempcod;
+                    end if;
+                end loop;
+                end loop;
+                
+            j := 1;
+            for x in coduri.first..coduri.last loop
+                select first_name, salary into nume, salariu
+                from employees
+                where employee_id = coduri(x);
+                
+                if x >= 1 and vechimi(x) != vechimi(x-1) then j := j + 1;
+                end if;
+                dbms_output.put_line(j || ' ' || 'Nume: ' || nume || ', Salariu ' || salariu || ', Vechime(ani): ' || vechimi(x));
+            end loop;
+            coduri.delete;
+            vechimi.delete;
+            dbms_output.put_line('DEPARTAMENT ' || dep.department_name || ':');
+        end if;
+        iteratii := 1;
+        i := 0;
+        
+        select count(*)
+            into linii
+            from employees
+            where department_id = dep.department_id;
+        
+        if linii = 0 then
+            dbms_output.put_line('DEPARTAMENT ' || dep.department_name || ':');
+            dbms_output.put_line('Nu exista angajati!');
+            de_afisat := 0;
+        else
+            de_afisat := 1;
+            select zi
+            into zi
+            from (select extract (day from hire_date) zi, count(*)
+                  from employees e
+                  where e.department_id = dep.department_id
+                  group by extract(day from hire_date)
+                  order by count(*) desc)
+            where rownum = 1;
+        
+        dbms_output.put_line('Ziua cu cele mai multe angajari: ' || zi);
+        
+        for e in (select * 
+                  from employees
+                  where department_id = dep.department_id and extract(day from hire_date) = zi) loop
+            vechime := round((sysdate-e.hire_date)/365, 0);
+            vechimi(i) := vechime;
+            coduri(i) := e.employee_id;
+            i := i + 1;
+        end loop;
+        end if;
+    end loop;
+end;
+
+execute ex6_mac;

@@ -1,0 +1,240 @@
+--TEMA 8
+CREATE TABLE error_mac(cod NUMBER,mesaj VARCHAR2(100));
+--Exercitiul 1
+--Var 1 cu eroare def de utilizator
+declare
+    var_neg exception;
+    x number;
+    radical number;
+begin
+    x := &x;
+    if x < 0 then raise var_neg;
+    end if;
+    
+    radical := sqrt(x);
+    
+    dbms_output.put_line('Radicalul este ' || radical);
+    
+    exception
+        when var_neg then 
+        dbms_output.put_line('Nu se poate calcula radicalul unui nr negativ');
+        insert into error_mac values(-20001, 'Nu se poate calcula radicalul unui nr negativ');
+
+end;
+
+select * from error_mac;
+
+--Var 2 cu eroarea interna a sistemului
+declare
+    x number;
+    radical number;
+    v_mesaj varchar2(100);
+    cod number;
+begin
+    x := &x;
+    radical := sqrt(x);
+    
+    dbms_output.put_line('Radicalul este ' || radical);
+    
+    exception
+        when value_error then 
+        cod := sqlcode;
+         v_mesaj := SUBSTR(SQLERRM,1,100);
+         insert into error_mac values(cod, v_mesaj);
+         dbms_output.put_line('Nu se poate calcula radicalul unui nr negativ');
+end;
+
+--Exercitiul 2
+declare
+    nume emp_mac.last_name%type;
+     prenume emp_mac.first_name%type;
+     salariu emp_mac.salary%type;
+     v_mesaj varchar2(100);
+    cod number;
+begin
+    salariu := &salariu;
+    select last_name, first_name
+    into nume, prenume
+    from emp_mac
+    where salary=salariu;
+    
+    dbms_output.put_line('Numele angajatului este ' || nume || ' ' ||prenume);
+    
+    exception
+        when no_data_found then 
+            dbms_output.put_line('nu exista salariati care sa castige acest salariu');
+            cod := sqlcode;
+            insert into error_mac values(cod, 'nu exista salariati care sa castige acest salariu');
+        when too_many_rows then 
+            dbms_output.put_line('exista mai mulţi salariati care castiga acest salariu');
+            cod := sqlcode;
+            insert into error_mac values(cod, 'exista mai mulţi salariati care castiga acest salariu');
+end;
+
+select * from emp_mac;
+
+--Exercitiul 3
+declare
+    cod_de_modificat departments.department_id%type;
+    cod_nou departments.department_id%type;
+    numar_ang number := 0;
+    exista_ang exception;
+begin
+    cod_de_modificat := &cod_vechi;
+    cod_nou := &cod_nou;
+    for i in (select department_id from emp_mac) loop
+        if i.department_id = cod_de_modificat then
+            numar_ang := numar_ang + 1;
+        end if;
+    end loop;
+    
+    if numar_ang > 0 then raise exista_ang;
+    end if;
+    
+    update dept_mac
+    set department_id = cod_nou
+    where department_id = cod_de_modificat;
+    
+    dbms_output.put_line('Cod modificat cu succes');
+    
+    exception
+        when exista_ang then dbms_output.put_line('Nu se poate modifica codul unui dept in care lucreaza angajati!');
+        insert into error_mac values(-20009, 'Nu se poate modifica codul unui dept in care lucreaza angajati!');
+end;
+
+
+--Exercitiul 4
+declare
+    limita_inf number;
+    limita_sup number;
+    numar_ang number := 0;
+    nume_dep departments.department_name%type;
+    exceptie exception;
+begin
+    limita_inf := &limita_inf;
+    limita_sup := &limita_sup;
+    for i in (select department_id from employees) loop
+        if i.department_id = 10 then
+            numar_ang := numar_ang + 1;
+        end if;
+    end loop;
+    
+    if numar_ang <= limita_sup and numar_ang >= limita_inf then
+        select department_name into nume_dep
+        from departments
+        where department_id = 10;
+    else
+        raise exceptie;
+    end if;
+    
+    dbms_output.put_line('Numele departamentului: ' || nume_dep);
+    exception
+        when exceptie then dbms_output.put_line('Nr de angajati nu se afla in intervalul introdus');
+        
+end;
+
+select count(*) from employees where department_id = 10;
+
+--Exercitiul 5
+declare
+    cod_de_modificat departments.department_id%type;
+    nume_nou departments.department_name%type;
+begin
+     cod_de_modificat := &cod_de_modificat;
+     nume_nou := '&nume_nou';
+
+    update dept_mac
+    set department_name = nume_nou
+    where department_id = cod_de_modificat;
+    
+    IF SQL%NOTFOUND THEN
+        RAISE_APPLICATION_ERROR(-20002,'codul introdus nu exista');
+    else dbms_output.put_line('Nume modificat cu succes');
+    END IF;
+
+end;
+
+select * from departments;
+
+--Exercitiul 6
+--Varianta 1 cu variabila index care contorizeaza numarul select-ului
+declare
+    cod_locatie locations.location_id%type;
+    cod_dept departments.department_id%type;
+    nume departments.department_name%type;
+    idx number(1) := 1;
+begin
+    cod_dept := &cod_dept;
+    
+    idx := 1;
+    select department_name into nume
+    from departments
+    where department_id = cod_dept;
+    
+    dbms_output.put_line('Departamentul al carui cod a fost dat este ' || nume);
+    
+    idx := 2;
+    cod_locatie := &cod_locatie;
+    select department_name into nume
+    from departments
+    where location_id = cod_locatie;
+    
+    dbms_output.put_line('Departamentul a carui locatie a fost data este ' || nume);
+
+    exception
+        when no_data_found then
+            if idx = 1 then dbms_output.put_line('Eroare de la SELECT-ul in functie de cod');
+            elsif idx = 2 then dbms_output.put_line('Eroare de la SELECT-ul in functie de locatie');
+            end if;
+            
+end;
+
+--Varianta 2 cu subblocuri
+declare
+    cod_locatie locations.location_id%type;
+    cod_dept departments.department_id%type;
+    nume departments.department_name%type;
+    idx number(1) := 1;
+begin
+    cod_dept := &cod_dept;
+    cod_locatie := &cod_locatie;
+    
+    begin
+        select department_name into nume
+        from departments
+        where department_id = cod_dept;
+        
+        dbms_output.put_line('Departamentul al carui cod a fost dat este ' || nume);
+        
+    exception
+        when no_data_found then
+            dbms_output.put_line('Eroare de la SELECT-ul in functie de cod');
+    end;
+    
+    
+    begin
+        select department_name into nume
+    from departments
+    where location_id = cod_locatie;
+    
+    dbms_output.put_line('Departamentul a carui locatie a fost data este ' || nume);
+
+    exception
+        when no_data_found then
+            dbms_output.put_line('Eroare de la SELECT-ul in functie de locatie');
+    end;
+    
+end;
+
+
+
+
+
+
+
+
+
+
+
+
+

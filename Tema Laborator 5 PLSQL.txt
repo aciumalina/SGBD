@@ -1,0 +1,320 @@
+--TEMA 5
+--EXERCITIUL 1
+
+CREATE SEQUENCE secv
+MINVALUE 300 
+MAXVALUE 9999
+START WITH 300 
+INCREMENT BY 1; 
+
+create table job_history_mac as select * from job_history;
+
+create or replace package pachet_mac is
+--a
+procedure adauga_angajat(nume employees.last_name%type, prenume employees.first_name%type,
+                        telefon employees.phone_number%type, email employees.email%type,
+                        nume_manager employees.last_name%type, prenume_manager employees.first_name%type,
+                    nume_departament departments.department_name%type, nume_job jobs.job_title%type);
+function salariu_minim(cod_depart employees.department_id%type, cod_job employees.job_id%type)
+return employees.salary%type;
+function cod_manager(nume employees.last_name%type, prenume employees.first_name%type)
+return employees.manager_id%type;
+function cod_depart(nume departments.department_name%type)
+return employees.department_id%type;
+function cod_job(nume jobs.job_title%type)
+return employees.job_id%type;
+
+--b
+procedure mutare(nume employees.last_name%type, prenume employees.first_name%type,
+                nume_dept departments.department_name%type, titlu_job jobs.job_title%type,
+                nume_manager employees.last_name%type, prenume_manager employees.first_name%type);
+--c
+function nr_subalt(nume employees.last_name%type, prenume employees.first_name%type)
+return number;
+
+--d 
+procedure promovare(nume employees.last_name%type, prenume employees.first_name%type);
+
+--e
+procedure update_salariu(valoare employees.salary%type, nume employees.last_name%type);
+
+--f
+cursor lista_ang(cod employees.job_id%type)
+return employees%rowtype;
+
+--g
+cursor lista_job return jobs%rowtype;
+
+--h
+procedure punctul_h;
+end pachet_mac;
+
+
+
+
+
+create or replace package body pachet_mac as
+
+--f implementare cursor
+cursor lista_ang(cod employees.job_id%type)
+return employees%rowtype is
+select * from employees where job_id = cod;
+
+--g implementare cursor
+cursor lista_job return jobs%rowtype is
+    select * from jobs;
+    
+--a implementari functii si proceduri
+function salariu_minim(cod_depart employees.department_id%type, cod_job employees.job_id%type)
+    return employees.salary%type is
+salariu employees.salary%type := null;
+begin
+    select min(salary) into salariu
+    from employees
+    where department_id = cod_depart and job_id = cod_job;
+    
+    if salariu is null then dbms_output.put_line('Datele introduse sunt incorecte');
+    end if;
+    return salariu;    
+
+end salariu_minim;
+
+function  cod_manager(nume employees.last_name%type, prenume employees.first_name%type)
+return employees.manager_id%type is 
+    cod_mng employees.manager_id%type;
+begin
+    select employee_id into cod_mng
+    from employees
+    where first_name = prenume and last_name = nume;
+    
+    if cod_mng is null then dbms_output.put_line('Datele introduse sunt incorecte');
+     end if;
+    return cod_mng;
+end cod_manager;
+
+function cod_depart(nume departments.department_name%type)
+return employees.department_id%type 
+is 
+    cod employees.department_id%type := null;
+begin
+    select department_id into cod from departments where
+    department_name = nume;
+    
+    if cod is null then dbms_output.put_line('Datele introduse sunt incorecte');
+     end if;
+    return cod;
+end cod_depart;
+
+function cod_job(nume jobs.job_title%type)
+return employees.job_id%type is cod employees.job_id%type := null;
+begin
+    select job_id into cod from jobs where job_title = nume;
+    
+    if cod is null then dbms_output.put_line('Datele introduse sunt incorecte');
+     end if;
+    return cod;
+end cod_job;
+
+procedure adauga_angajat(nume employees.last_name%type, prenume employees.first_name%type,
+                        telefon employees.phone_number%type, email employees.email%type,
+                        nume_manager employees.last_name%type, prenume_manager employees.first_name%type,
+                    nume_departament departments.department_name%type, nume_job jobs.job_title%type)
+is
+    depart_cod employees.department_id%type;
+    job_cod employees.job_id%type;
+    cod_man employees.manager_id%type;
+    salariu employees.salary%type;
+    
+begin
+    depart_cod := pachet_mac.cod_depart(nume_departament);
+    job_cod := pachet_mac.cod_job(nume_job);   
+    cod_man :=  pachet_mac.cod_manager(nume_manager, prenume_manager);     
+    salariu := pachet_mac.salariu_minim(depart_cod, job_cod);
+
+    insert into employees_mac values(secv.nextval, nume, prenume, email, telefon, sysdate, job_cod, salariu, null, cod_man, depart_cod);
+
+end adauga_angajat;
+
+--b implementare procedura
+procedure mutare(nume employees.last_name%type, prenume employees.first_name%type,
+                nume_dept departments.department_name%type, titlu_job jobs.job_title%type,
+                nume_manager employees.last_name%type, prenume_manager employees.first_name%type)
+is
+    depart_cod employees.department_id%type;
+    job_cod employees.job_id%type;
+    cod_man employees.manager_id%type;
+    salariu_nou employees.salary%type;
+    salariu_curent employees.salary%type;
+    comision employees.commission_pct%type;
+    cod_ang employees.employee_id%type;
+    data_ang employees.hire_date%type;
+begin
+    depart_cod := pachet_mac.cod_depart(nume_dept);
+    job_cod := pachet_mac.cod_job(titlu_job);
+    cod_man :=  pachet_mac.cod_manager(nume_manager, prenume_manager);
+    salariu_nou := pachet_mac.salariu_minim(depart_cod, job_cod);
+    
+    select salary into salariu_curent
+    from employees where last_name = nume and first_name = prenume;
+    
+    if salariu_nou < salariu_curent then salariu_nou := salariu_curent;
+    end if;
+    
+    select min(commission_pct) into comision
+    from employees
+    where department_id = depart_cod and job_id = job_cod;
+    
+    select employee_id, hire_date
+    into cod_ang, data_ang
+    from employees
+    where first_name = prenume and last_name = nume;
+    
+    update employees_mac
+    set hire_date = sysdate, job_id = job_cod, salary = salariu_nou, commission_pct = comision, manager_id = cod_man, department_id = depart_cod
+    where first_name = prenume and last_name = nume;
+    
+    insert into job_history_mac values(cod_ang, data_ang, sysdate, job_cod, depart_cod);
+    
+    exception
+        when no_data_found then dbms_output.put_line('Nu s-au gasit date in tabel pentru informatiile introduse');
+end mutare;
+
+--c implementare functie
+function nr_subalt(nume employees.last_name%type, prenume employees.first_name%type)
+return number is
+nr number(3) := 0;
+cod_angajat employees.employee_id%type;
+
+begin
+    select employee_id into cod_angajat from employees where first_name = prenume and last_name = nume;
+    
+    select count(*)
+    into nr
+    from employees
+    start with employee_id = cod_angajat
+    connect by prior employee_id = manager_id;
+    
+    return nr;
+    
+    exception
+        when no_data_found then raise_application_error(-20009, 'Nu s-au gasit angajati cu datele introduse'); --dbms_output.put_line('Nu s-au gasit angajati cu datele introduse');
+        return 0;
+end nr_subalt;
+
+--d implementare procedura
+procedure promovare(nume employees.last_name%type, prenume employees.first_name%type)
+is
+    cod_ang employees.employee_id%type;
+    manager_direct employees.manager_id%type;
+    manager_indirect employees.manager_id%type;
+begin
+    select employee_id into cod_ang
+    from employees
+    where last_name = nume and first_name = prenume;
+    
+    select manager_id into manager_direct from employees where employee_id = cod_ang;
+    
+    if manager_direct is null then dbms_output.put_line('Angajatul ocupa deja cea mai inalta treapta din companie');
+    else
+        select manager_id into manager_indirect from employees where employee_id = manager_direct;
+        update employees_mac set manager_id = manager_indirect where employee_id = cod_ang;
+    end if;
+ 
+    exception
+        when no_data_found then raise_application_error(-20009, 'Nu au fost gasite informatii cu datele introduse');
+end promovare;
+
+--e implementare procedura
+procedure update_salariu(valoare employees.salary%type, nume employees.last_name%type)
+is
+    cod_ang employees.employee_id%type;
+    cod_job employees.job_id%type;
+    salariu_min jobs.min_salary%type;
+    salariu_max jobs.max_salary%type;
+begin
+    select employee_id, job_id into cod_ang, cod_job
+    from employees
+    where last_name = nume;
+    
+    if cod_ang is null then dbms_output.put_line('Nu s-au gasit angajati cu numele introdus');
+    else
+        select min_salary, max_salary into salariu_min, salariu_max from jobs
+        where job_id = cod_job;
+        if valoare < salariu_min or valoare > salariu_max then dbms_output.put_line('Salariul nu respecta limitele impuse pentru acest job');
+        else
+            update employees_mac
+            set salary = valoare
+            where employee_id = cod_ang;
+        end if;
+    end if;
+    
+    
+    
+    exception
+        when too_many_rows then dbms_output.put_line('Exista mai multi angajati cu acest nume');
+        for contor in (select * from employees where last_name = nume) loop
+        dbms_output.put_line('Angajatul: ' || contor.first_name || ' ' || contor.last_name);
+        end loop;
+        when no_data_found then dbms_output.put_line('Nu s-au gasit angajati cu numele introdus');
+
+end update_salariu;
+
+--h
+procedure punctul_h is
+a_mai_lucrat number(1) := 0;
+begin
+for job in pachet_mac.lista_job loop
+    dbms_output.put_line('TITLUL JOBULUI');
+    dbms_output.put_line(job.job_title);
+    dbms_output.put_line('Angajatii: ');
+    for angajat in pachet_mac.lista_ang(job.job_id) loop
+        a_mai_lucrat := 0;
+        for intrare in (select * from job_history_mac) loop
+            if intrare.employee_id = angajat.employee_id and intrare.job_id = job.job_id then
+                a_mai_lucrat := 1;
+            end if;
+            end loop;
+        if a_mai_lucrat = 0 then   
+        dbms_output.put_line(angajat.first_name || ' ' || angajat.last_name || ', care NU a mai lucrat pe acest job');
+        else dbms_output.put_line(angajat.first_name || ' ' || angajat.last_name || ', care a mai lucrat pe acest job');
+        end if;
+    end loop;
+    end loop;
+end punctul_h;
+    
+end pachet_mac;
+
+--a
+execute pachet_mac.adauga_angajat('Popescu', 'Pop', 523432, 'PPOP', 'King', 'Steven', 'Human Resources', 'Human Resources Representative');
+--b
+execute pachet_mac.mutare('Kochhar', 'Neena', 'IT', 'Programmer', 'King', 'Steven');
+execute pachet_mac.mutare('Chen', 'John', 'Marketing',  'Marketing Representative','King', 'Steven');
+execute pachet_mac.mutare('Chen', 'John', 'Administration', 'Administration Vice President','Jennifer', 'Whalen' );
+
+select * from job_history_mac;
+
+--c
+select pachet_mac.nr_subalt('Cambrault', 'Gerald') from dual;
+
+--d
+execute pachet_mac.promovare('Bloom', 'Harrison');
+
+--e
+execute pachet_mac.update_salariu(100, 'Chen');
+execute pachet_mac.update_salariu(10000, 'King');
+execute pachet_mac.update_salariu(100, 'Popesccu');
+
+--h
+execute pachet_mac.punctul_h;
+
+select * from employees_mac;
+select * from job_history_mac;
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+
+  
+
+
+
+

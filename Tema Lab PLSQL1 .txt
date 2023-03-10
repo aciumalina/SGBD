@@ -1,0 +1,142 @@
+--2.a
+with toateDatele as 
+(select date'2021-10-01' + level - 1 day
+from   dual
+connect by level <= (
+  date'2021-10-31' - date'2021-10-01' + 1
+))
+select to_char(day, 'dd-mm-yyyy') "Data", (select count(to_char(book_date, 'dd-mm-yyyy')) from rental where to_char(book_date, 'dd-mm-yyyy') = to_char(day, 'dd-mm-yyyy')) "Nr Imprumuturi"
+from toateDatele 
+group by day
+order by "Data";
+
+--2.b
+
+create table octombrie_mac (id number(3), data date);
+
+declare
+    data_start date := '01-10-2022';
+
+begin
+    for i in 0..30 loop
+        insert into octombrie_mac values(i+1, data_start + i);
+    end loop;
+end;
+
+select * from octombrie_mac;
+
+rollback;
+
+select to_char(data, 'dd-mm-yyyy') "Data", (select count(to_char(book_date, 'dd-mm-yyyy')) from rental where to_char(book_date, 'dd-mm-yyyy') = to_char(data, 'dd-mm-yyyy')) "Nr Imprumuturi"
+from octombrie_mac
+group by data
+order by "Data";
+
+--3
+declare
+    nume_membru VARCHAR(20) := '&nume_membru';
+    membru_id member.member_id%type;
+    
+    nr_imprumuturi NUMBER(3);
+    
+begin
+    select member_id into membru_id 
+    from member
+    where last_name = nume_membru;
+    
+    select count(*) into nr_imprumuturi
+    from rental
+    where member_id = membru_id
+    group by member_id;
+    
+    dbms_output.put_line('Membrul cu numele ' || nume_membru || ' a efectuat ' || nr_imprumuturi || ' imprumuturi');
+    
+exception
+    when NO_DATA_FOUND then
+        dbms_output.put_line('Nu exista membru cu numele introdus!');
+    when TOO_MANY_ROWS
+        then dbms_output.put_line('Exista mai multi membri cu acelasi nume!');
+        
+end;
+
+--4
+declare
+    nume_membru VARCHAR(20) := '&nume_membru';
+    membru_id member.member_id%type;
+    
+    nr_imprumuturi NUMBER(3);
+    nr_titluri Number(3);
+    
+begin
+    select member_id into membru_id 
+    from member
+    where last_name = nume_membru;
+    
+    select count(*) into nr_imprumuturi
+    from rental
+    where member_id = membru_id
+    group by member_id;
+    
+    select count(*) into nr_titluri
+    from title;
+    
+    dbms_output.put_line('Membrul cu numele ' || nume_membru || ' a efectuat ' || nr_imprumuturi || ' imprumuturi');
+    
+    if nr_imprumuturi > (75*nr_titluri)/100
+        then dbms_output.put_line('Membrul face parte din categoria 1');
+    elsif nr_imprumuturi > (50*nr_titluri)/100 and nr_imprumuturi < (75*nr_titluri)/100
+        then  dbms_output.put_line('Membrul face parte din categoria 2');
+    elsif nr_imprumuturi > (25*nr_titluri)/100 and nr_imprumuturi < (50*nr_titluri)/100
+        then  dbms_output.put_line('Membrul face parte din categoria 3');
+    else dbms_output.put_line('Membrul face parte din categoria 4');
+    
+    end if;
+    
+exception
+    when NO_DATA_FOUND then
+        dbms_output.put_line('Nu exista membru cu numele introdus!');
+    when TOO_MANY_ROWS
+        then dbms_output.put_line('Exista mai multi membri cu acelasi nume!');
+        
+end;
+
+
+--5
+create table member_mac as select * from member;
+
+alter table member_mac add discount number(2);
+
+declare 
+    cod_membru number(3) := &cod;
+    nr_imprumuturi number(2);
+    discount_membru number(2);
+    nr_titluri number(3);
+begin
+    select count(*) into nr_imprumuturi
+    from rental
+    where member_id = cod_membru
+    group by member_id;
+
+    select count(*) into nr_titluri
+    from title;
+
+    update member_mac
+    set discount = 
+    case
+        when  nr_imprumuturi > (75*nr_titluri)/100 then 10
+        when  nr_imprumuturi > (50*nr_titluri)/100 and nr_imprumuturi < (75*nr_titluri)/100 then 5
+        when  nr_imprumuturi > (25*nr_titluri)/100 and nr_imprumuturi < (50*nr_titluri)/100 then 3
+        else 0
+    end
+    where member_id = cod_membru;
+    if sql%rowcount = 0 
+        then dbms_output.put_line('Nu s-a produs nicio modificare');
+    elsif sql%rowcount = 1 
+        then dbms_output.put_line('S-a produs o modificare');
+    end if;
+    
+exception
+    when NO_DATA_FOUND then dbms_output.put_line('Nu s-a gasit niciun membru cu codul introdus');
+    
+
+end;
